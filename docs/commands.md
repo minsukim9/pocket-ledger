@@ -1,6 +1,6 @@
 # 명령어 사용법
 
-[← 프로젝트 소개](../README.md) · [저장 형식](storage.md) · [직접 테스트](development.md)
+[← 프로젝트 소개](../README.md) · [저장 형식](storage.md) · [실행 흐름](flows.md) · [직접 테스트](development.md)
 
 모든 예시는 **프로젝트 루트**에서 실행합니다. `python` 명령이 Python 3.10+을 가리키지 않는 환경에서는 `python3`로 바꾸세요.
 
