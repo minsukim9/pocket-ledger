@@ -64,7 +64,7 @@ python3 -m budget_app list --data-dir ./manual-test-data
 | --- | --- |
 | [명령어 사용법](docs/commands.md) | 각 명령의 입력 방식·옵션·출력·예외 처리 |
 | [저장 파일과 CSV 계약](docs/storage.md) | `data/` 위치, 내부 4개 CSV 스키마, **import/export 스키마**, 백업·복구·안전성 |
-| [설계와 코드 읽기](docs/architecture.md) | CLI/서비스/저장소/모델의 책임, 제너레이터·데코레이터·타입 힌트 |
+| [설계와 코드 읽기](docs/architecture.md) | CLI/서비스/저장소/모델의 책임 경계, 제너레이터 스트리밍, 데코레이터(로깅·시간 측정·오류), 타입 힌트 |
 | [개발·검증 가이드](docs/development.md) | 자동 테스트, 사용자 직접 테스트 시나리오, 문제 해결 |
 | [CSV·JSONL·SQLite 비교](docs/format-choice.md) | 저장 형식 선택 이유와 DB로 이전할 때의 고려 사항 |
 

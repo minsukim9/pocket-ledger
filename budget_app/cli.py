@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from ._config import resolve_data_dir
-from ._decorators import handle_errors
+from ._decorators import handle_errors, logged, timed
 from ._format import format_transaction_stream, format_transactions
 from ._models import (
     ModelError,
@@ -518,7 +518,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# 로깅·시간 측정은 관측만 한다(기본 무출력). 오류 계약(handle_errors)을 가장 바깥에 둬
+# 어떤 내부 예외도 기존 [오류]/[힌트] + 종료 코드 계약으로 수렴시킨다.
 @handle_errors
+@timed
+@logged
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     return args.func(args)

@@ -23,7 +23,7 @@ __main__.py ──► cli.py ──────► _service.py ─────�
 | `budget_app/_store.py` | 내부 CSV I/O, 기본 카테고리 시드, 임시 파일 교체, 백업 | `TransactionStore.iter_transactions()`, `_atomic_write()` |
 | `budget_app/_service.py` | 검색 조건·요약·예산 사용률·CSV 교환·반복 규칙 적용 | `search_transactions()`, `month_summary()`, `expand_recurrences()` |
 | `budget_app/_format.py` | 콘솔 거래 목록/검색 출력 포맷 | `format_transactions()`, `format_transaction_stream()` |
-| `budget_app/_decorators.py` | 명령 공통 오류 출력·종료 코드 처리 | `@handle_errors` |
+| `budget_app/_decorators.py` | 공통 관심사를 분리한 데코레이터 — 오류 계약·로깅·시간 측정 | `@handle_errors`, `@logged`, `@timed` |
 | `budget_app/_config.py` | 기본 `./data` 및 `--data-dir` 경로 해석 | `resolve_data_dir()` |
 
 CLI는 입력 방식과 출력 메시지에 집중하고, 서비스는 **정책/집계**, 저장소는 **파일을 읽고 쓰는 방법**에 집중합니다. CSV 포맷이나 파일 경로가 바뀌어도 데이터 정책과 CLI가 동시에 크게 바뀌지 않도록 경계를 나눴습니다.
@@ -51,16 +51,23 @@ def iter_transactions(self) -> Iterator[Transaction]:
 
 거래는 저장할 때 `(date, 숫자형 id)` 내림차순으로 정렬합니다. 이 불변식 덕분에 최신순 조회에서 **파일 전체를 메모리로 불러와 정렬하지 않아도** 됩니다. 파일을 수동으로 수정해 순서를 망가뜨리면 최신순 출력도 보장되지 않습니다.
 
-## 데코레이터와 오류 계약
+## 데코레이터: 로깅 · 시간 측정 · 오류 계약
 
-`cli.main()`에 `@handle_errors`를 적용합니다. 처리 중 발생한 `ModelError`, `StoreError`, EOF 등을 CLI 공통 형식으로 바꿉니다.
+`budget_app/_decorators.py`가 공통 관심사를 각각 독립 데코레이터로 분리했습니다. 함수 동작은 바꾸지 않고 관찰·계약만 덧입히며(반환값·예외 전파 유지, `functools.wraps`로 이름·독스트링 보존), 서로 조합해 쌓아 올릴 수 있습니다(위에 적은 데코레이터부터 실행). `cli.main()`이 세 겹으로 감싸져 있습니다:
 
-```text
-[오류] 등록되지 않은 카테고리입니다: 'other'
-[힌트] 'category add'로 등록하거나 'category list'로 목록을 확인하세요
+```python
+@handle_errors   # 가장 바깥: 예외 → [오류]/[힌트] + 종료 코드
+@timed           # 경과 시간 (DEBUG)
+@logged          # 호출/반환/예외 기록 (DEBUG)
+def main(argv: list[str] | None = None) -> int:
+    ...
 ```
 
-명령별 함수가 같은 `try/except`와 출력 코드를 반복하지 않아도 되고, 호출자에게는 정상 종료 `0`, 처리 오류 `1`, 잘못된 명령/옵션 `2`, Ctrl+C `130`이라는 계약을 제공합니다. 대화형 재입력은 명령을 종료하지 않고 **현재 질문만 반복**하므로 `_ask_validated()`에서 처리합니다. 오류 메시지에는 스택트레이스를 출력하지 않습니다.
+- `@handle_errors` — 오류 계약: `ModelError`/`StoreError`/EOF/기타 예외를 `[오류] 원인`·`[힌트]`로 바꾸고 비-0 코드를 반환합니다. 정상 `0`, 처리 오류 `1`, 잘못된 명령/옵션 `2`(argparse), Ctrl+C `130`이며 스택트레이스는 출력하지 않습니다. `SystemExit`(argparse 종료 포함)는 그대로 통과시키고, 대화형 재입력은 명령을 종료하지 않고 **현재 질문만 반복**하므로 `_ask_validated()`에서 처리합니다. 예: `[오류] 등록되지 않은 카테고리입니다: 'other'` / `[힌트] 'category add'로 등록하거나 'category list'로 목록을 확인하세요`.
+- `@logged` — 표준 `logging` 모듈로 호출/반환/예외만 남깁니다. 기본은 무출력(표준 로깅 규칙)이라 콘솔 계약(정상 stdout/오류 stderr, 조용한 정상 실행)을 바꾸지 않습니다. `BUDGET_APP_LOG=DEBUG`(1/true/yes/on=INFO, 그 외 레벨 이름)로 켜면 stderr에 `DEBUG budget_app: main 호출` 형태가 찍힙니다. 이미 로깅을 구성했다면 그 설정을 존중합니다.
+- `@timed` — `time.perf_counter` 기준 경과를 DEBUG로 남깁니다. 대량 파일 I/O 경로에 걸어뒀습니다: `export_transactions()`, `import_transactions()`.
+
+제너레이터 함수에는 걸지 않는 편이 안전합니다: 데코레이터가 감싸는 것은 제너레이터 **생성** 시점이라 소비(스트리밍) 시간이 아니라 객체 생성 시점을 재게 됩니다. 스트리밍 경로(`iter_transactions()`, `search_transactions()`)가 대상이 아닌 이유입니다.
 
 ## 타입 힌트와 데이터 계약
 

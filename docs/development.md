@@ -13,7 +13,25 @@ python3 -m unittest discover -s tests -v
 python3 -m budget_app --help
 ```
 
-`tests/test_core.py`는 CLI 입력 재시도, 월별 요약·빈 달의 예산, 수정/삭제의 없는 ID, import/export 스키마 및 손상 CSV 보호, 전체 하위 명령 `--help` 등을 검사합니다. `tests/test_bonus.py`는 백업, 반복 규칙, 목록 정렬, CSV 내보내기 등을 검사합니다. 테스트는 임시 폴더를 사용하므로 기본 `data/` 파일을 지우거나 덮어쓰지 않습니다.
+`tests/test_core.py`는 CLI 입력 재시도, 월별 요약·빈 달의 예산, 수정/삭제의 없는 ID, import/export 스키마 및 손상 CSV 보호, 전체 하위 명령 `--help` 등을 검사합니다. `tests/test_bonus.py`는 백업, 반복 규칙, 목록 정렬, CSV 내보내기 등을 검사합니다. `tests/test_decorators.py`는 데코레이터(로깅·시간 측정·오류 계약)를 검사합니다 — 표준 `logging`(`assertLogs`)과 주입한 clock으로 검증하며, 기본 무출력이라 기존 콘솔 계약을 바꾸지 않습니다. 테스트는 임시 폴더를 사용하므로 기본 `data/` 파일을 지우거나 덮어쓰지 않습니다.
+
+### 데코레이터 출력 보기(선택)
+
+로깅·시간 측정은 기본 무출력이라 일반 실행 출력은 그대로입니다. 환경변수 `BUDGET_APP_LOG`로 켭니다(레벨 이름 또는 `1`/`true`/`yes`/`on`).
+
+```bash
+BUDGET_APP_LOG=DEBUG python3 -m budget_app list --data-dir "$DATA"
+```
+
+stderr 예(순서·수치는 실행마다 다름):
+
+```text
+DEBUG budget_app: main 호출
+DEBUG budget_app: main 반환
+DEBUG budget_app: main: 0.003초
+```
+
+`@timed`가 걸린 내보내기/가져오기에서는 `export_transactions: 0.002초` 같은 줄이 함께 찍힙니다. 테스트는 임시 폴더를 쓰므로 기본 `data/`는 그대로입니다.
 
 ## 수동 확인: 데이터 분리해서 시작하기
 

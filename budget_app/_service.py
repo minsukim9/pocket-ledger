@@ -6,6 +6,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
+from ._decorators import timed
 from ._models import (
     Budget,
     ModelError,
@@ -184,6 +185,7 @@ def budget_status(budget: Budget, spent: int) -> BudgetStatus:
     return BudgetStatus(percent=percent, over=spent > budget.amount, excess=max(0, spent - budget.amount))
 
 
+@timed
 def export_transactions(
     store: TransactionStore,
     out_path: str | Path,
@@ -237,6 +239,7 @@ def export_transactions(
     return written
 
 
+@timed
 def import_transactions(
     store: TransactionStore,
     cat_store: CategoryStore,
