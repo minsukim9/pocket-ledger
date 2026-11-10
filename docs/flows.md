@@ -241,33 +241,42 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     actor User as 사용자
-    participant CLI as _cmd_import()
-    participant Service as import_transactions()
-    participant ImportCSV as incoming.csv
-    participant Category as CategoryStore
-    participant Store as TransactionStore
-    participant Atomic as _atomic_write()
+    participant CLI as "_cmd_import()"
+    participant Service as "import_transactions()"
+    participant ImportCSV as "incoming.csv"
+    participant Category as "CategoryStore"
+    participant Store as "TransactionStore"
+    participant Atomic as "_atomic_write()"
 
     User->>CLI: import --from incoming.csv
     CLI->>Service: 파일 경로 전달
-    Service->>ImportCSV: 헤더 검사 (UTF-8, 필수 컬럼)
-    alt 헤더/CSV 문법 오류
-        ImportCSV-->>CLI: StoreError; 거래 파일 변경 없음
-    else 파일 정상
-        Service->>Category: 등록 카테고리 목록 읽기
-        loop 외부 CSV의 각 행
-            Service->>Service: 날짜·type·금액·태그·카테고리 검증
+    Service->>ImportCSV: UTF-8 및 필수 헤더 검사
+
+    alt 헤더 또는 CSV 문법 오류
+        ImportCSV-->>Service: StoreError
+        Service-->>CLI: 오류 전달
+        Note over Service,Store: 기존 거래 파일 변경 없음
+    else CSV 파일 정상
+        Service->>Category: 등록 카테고리 목록 조회
+        Category-->>Service: 카테고리 목록
+
+        loop CSV의 각 행
+            Service->>Service: 날짜, 유형, 금액, 태그, 카테고리 검증
+
             alt 유효한 행
-                Service->>Service: 새 Transaction 및 새 ID 목록에 추가
-            else 잘못된 행 / 미등록 카테고리 / 초과 컬럼
+                Service->>Service: Transaction 생성 및 ID 할당
+            else 유효하지 않은 행
                 Service->>Service: skipped += 1
             end
         end
+
         Service->>Store: insert_many(유효 거래 목록)
-        Store->>Atomic: 전체 transactions.csv 재작성
-        Atomic-->>Store: os.replace로 교체
-        Store-->>CLI: imported / skipped 수
-        CLI-->>User: [완료] imported=N, skipped=M
+        Store->>Atomic: transactions.csv 재작성
+        Atomic->>Atomic: 임시 파일 작성 및 os.replace()
+        Atomic-->>Store: 저장 완료
+        Store-->>Service: 처리 완료
+        Service-->>CLI: imported, skipped
+        CLI-->>User: imported=N, skipped=M
     end
 ```
 
